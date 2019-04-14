@@ -1,0 +1,44 @@
+{
+  "name": "rest-server",
+  "version": "0.1.0",
+  "description": "Preconfigured rest-server",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "tsc": "tsc",
+    "watch-ts": "tsc -w",
+    "build": "tsc && npm run tslint",
+    "start": "node dist/index.js",
+    "launch": "npm run build && npm start",
+    "tslint": "tslint -c tslint.json -p tsconfig.json 'src/**/*.ts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zorzal2/rest-server.git"
+  },
+  "keywords": [
+    "rest-server"
+  ],
+  "author": "llobeto",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zorzal2/rest-server/issues"
+  },
+  "homepage": "https://github.com/zorzal2/rest-server#readme",
+  "dependencies": {
+    "@types/node": "^11.13.0",
+    "body-parser": "^1.18.3",
+    "compression": "^1.7.3",
+    "express": "^4.16.4"
+  },
+  "devDependencies": {
+    "@types/body-parser": "^1.17.0",
+    "@types/compression": "0.0.36",
+    "@types/express": "^4.16.1",
+    "@types/jest": "^24.0.11",
+    "jest": "^24.7.1",
+    "ts-jest": "^24.0.1",
+    "tslint": "^5.15.0",
+    "typescript": "^3.4.1"
+  }
+}
