@@ -2,7 +2,7 @@ import Express from 'express'
 import BodyParser from 'body-parser'
 import Compression from 'compression'
 import { PathHandler, RequestHandler } from './handlers'
-import { CreatePathHandler } from './path-proxy'
+import { CreateProxyPathHandler } from './path-proxy'
 
 type ExpressApp = Express.Express
 
@@ -19,9 +19,7 @@ function StartServer(conf: ServerConfig = defaultConf): PathHandler {
 	app.use(BodyParser.json())
     app.use(Compression())
     app.listen(conf.port)
-
-    const requestHandler: RequestHandler = new RequestHandler(app, '/')
-    return CreatePathHandler(requestHandler);
+    return CreateProxyPathHandler(app, "");
 }
 
 
