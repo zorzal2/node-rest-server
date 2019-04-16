@@ -5,92 +5,74 @@ type Request = Express.Request
 type Response = Express.Response
 type NextFunction = Express.NextFunction
 
-interface Transaction{
-    req: Request
-    res: Response
+type ListHandler = (...params: string[]) => any
+type GetHandler = (...params: string[]) => any
+type AddHandler = (body: Object, ...params: string[]) => any
+type UpdateHandler = (body: Object, ...params: string[]) => any
+type RemoveHandler = (...params: string[]) => any
+type InterceptHandler = (next: NextFunction) => any
+
+interface RequestMethodHandler<F> {
+    (handler : F): RequestHandler
 }
 
-interface ListHandler{
-    (...params: string[]) : any
-}
-
-interface GetHandler{
-    (...params: string[]) : any
-}
-
-interface AddHandler{
-    (body: Object, ...params: string[]) : any
-}
-
-interface UpdateHandler{
-    (body: Object, ...params: string[]) : any
-}
-
-interface RemoveHandler{
-    (...params: string[]) : any
-}
-
-interface InterceptHandler{
-    (next: NextFunction) : any
-}
-
-interface RequestHandlerCreator<F, T> {
-    (handler : F): T
+interface Handler{
+    (body: Object, ...params: string[])
 }
 
 class RequestHandler {
 
     private params: string[];
+    private path: string;
 
-    constructor(protected app: ExpressApp, protected path: string){
-        this.params = path
-                .split('/')
+    constructor(protected app: ExpressApp, protected paths: string[]){
+        this.params = paths
                 .filter(path => path.startsWith(':'))
                 .map(path => path.split(':')[1])
+        this.path = paths.join('/');
     }
 
     private getParams(req: Request): string[] {
         return this.params.map(param => req.params[param]).filter(val => val != null)
     }
 
+    private getContext(req: Request, res: Response) {
+        return { 
+            request: req,
+            response: res,
+            query: req.query,
+            headers: req.headers,
+            cookies: req.cookies
+        }
+    }
 
-    list: RequestHandlerCreator<ListHandler, RequestHandler> = (listHandler: ListHandler): RequestHandler => {
-        console.log('register list : ' + this.path + ' - ' + this.params.join(','))
-        this.app.get(this.path, (req, res) => {
-            return res.send(listHandler.call({ req, res}, ...this.getParams(req)))
+    private registerHandler<method extends keyof ExpressApp>(method: method, handler: Handler) {
+        console.log(`Handler('${this.path}','${method.toUpperCase()}')`)
+        this.app[method](this.path, (req, res) => {
+            return res.send(handler.call(this.getContext(req, res), req.body, this.getParams(req)))
         })
         return this
     }
-    get: RequestHandlerCreator<GetHandler, RequestHandler> = (getHandler: GetHandler): RequestHandler => {
-        console.log('register get : ' + this.path + ' - ' + this.params.join(','))
-        this.app.get(this.path , (req, res) => {
-            return res.send(getHandler.call({ req, res}, ...this.getParams(req)))
-        })
-        return this
+
+    list: RequestMethodHandler<ListHandler> = (listHandler: ListHandler): RequestHandler => {
+        return this.registerHandler('get', (body, params) => listHandler.call(this, params))
     }
-    add: RequestHandlerCreator<AddHandler, RequestHandler>= (addHandler: AddHandler): RequestHandler => {
-        this.app.put(this.path, (req, res) => {
-            return res.send(addHandler.call({ req, res}, req.body))
-        })
-        return this
+    get: RequestMethodHandler<GetHandler> = (getHandler: GetHandler): RequestHandler => {
+        return this.registerHandler('get', (body, params) => getHandler.call(this, params))
     }
-    update: RequestHandlerCreator<UpdateHandler, RequestHandler>= (updateHandler: UpdateHandler): RequestHandler => {
-        this.app.post(this.path, (req, res) => {
-            //BUG
-            return res.send(updateHandler.call({req, res}, req.body, ...this.getParams(req)))
-        })
-        return this
+    add: RequestMethodHandler<AddHandler>= (addHandler: AddHandler): RequestHandler => {
+        return this.registerHandler('put', (body, params) => addHandler.call(this, body))
     }
-    remove: RequestHandlerCreator<RemoveHandler, RequestHandler>= (removeHandler: RemoveHandler): RequestHandler => {
-        this.app.delete(this.path, (req, res) => {
-            return res.send(removeHandler.call({ req, res}, ...this.getParams(req)))
-        })
-        return this
+    update: RequestMethodHandler<UpdateHandler>= (updateHandler: UpdateHandler): RequestHandler => {
+        return this.registerHandler('post', (body, params) => updateHandler.call(this, body, params))
     }
-    intercept: RequestHandlerCreator<InterceptHandler, RequestHandler>= (interceptHandler: InterceptHandler): RequestHandler => {
-        console.log('register intercept : ' + this.path)
+    remove: RequestMethodHandler<RemoveHandler>= (removeHandler: RemoveHandler): RequestHandler => {
+        return this.registerHandler('delete', (body, params) => removeHandler.call(this, params))
+    }
+    intercept: RequestMethodHandler<InterceptHandler>= (interceptHandler: InterceptHandler): RequestHandler => {
+        console.log(`Interceptor('${this.path}')`)
         this.app.use(this.path, (req, res, next) => {
-            return interceptHandler.call({req, res}, next)
+            return interceptHandler.call(this.getContext(req, res), next)
         })
         return this
     }

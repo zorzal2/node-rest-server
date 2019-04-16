@@ -6,19 +6,18 @@ let update = (id, some) => some;
 
 const serverApp = StartServer()
 
-/*
+
 serverApp()
-    .intercept(function(transaction, next){
-        console.log("Intercept :" + transaction.req.originalUrl)
+    .intercept((next) => {
+        console.log(this)
         next();
     });
-*/
 
-serverApp
-    .users
 
 serverApp()
-        .list(() => [])
+        .list(() => {
+            return []
+        })
 
 serverApp
     .users

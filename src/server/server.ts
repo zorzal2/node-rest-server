@@ -19,7 +19,7 @@ function StartServer(conf: ServerConfig = defaultConf): PathHandler {
 	app.use(BodyParser.json())
     app.use(Compression())
     app.listen(conf.port)
-    return CreateProxyPathHandler(app, "");
+    return CreateProxyPathHandler(app, []);
 }
 
 
