@@ -1,89 +1,122 @@
-import Express from 'express'
+import logger from '@zorzal2/logger';
+import Express from 'express';
+import { CreateProxyPathHandler } from './path-proxy';
 
-type ExpressApp = Express.Express
-type Request = Express.Request
-type Response = Express.Response
-type NextFunction = Express.NextFunction
+let serverLog = logger.create('server-app');
 
-type ListHandler = (...params: string[]) => any
-type GetHandler = (...params: string[]) => any
-type AddHandler = (body: Object, ...params: string[]) => any
-type UpdateHandler = (body: Object, ...params: string[]) => any
-type RemoveHandler = (...params: string[]) => any
-type InterceptHandler = (next: NextFunction) => any
+type Request = Express.Request;
+type Response = Express.Response;
+type NextFunction = Express.NextFunction;
+type ExpressRouter = Express.Router;
 
-interface RequestMethodHandler<F> {
-    (handler : F): RequestHandler
+
+// tODO ACEPTAR ESTO COMO HANDLER GLOBAL
+// type Handler = (body?: Object, ...params: string[]) => any
+// tetativamente ya no es mas necesario
+
+
+type ListHandler = (...params: string[]) => Promise<any[]> | any[];
+type GetHandler = (...params: string[]) => any;
+type AddHandler = (body: Object, ...params: string[]) => any;
+type UpdateHandler = (body: Object, ...params: string[]) => any;
+type RemoveHandler = (...params: string[]) => any;
+type InterceptHandler = (next: NextFunction) => any;
+type OperationHandler = ListHandler | GetHandler | AddHandler | UpdateHandler | RemoveHandler | InterceptHandler;
+type validOperation = 'get' | 'post' | 'put' | 'delete' | 'use' ;
+
+type RequestContext = {
+    request: Request;
+    response: Response;
+    args: any;
+    headers: any;
+    cookies: any;
+};
+
+function some(): RequestContext {
+    return <RequestContext>{};
 }
 
-interface Handler{
-    (body: Object, ...params: string[])
+type RequestRegister<T extends OperationHandler> = (paths: string[], handler: T) => any;
+
+interface PathHandler<T extends OperationHandler> {
+    [key: string]: PathHandler<T>;
+    (handler: T): void;
 }
 
 class RequestHandler {
+    public list: PathHandler<GetHandler>;
+    public get: PathHandler<GetHandler>;
+    public add: PathHandler<AddHandler>;
+    public update: PathHandler<UpdateHandler>;
+    public remove: PathHandler<RemoveHandler>;
+    public intercept: PathHandler<InterceptHandler>;
 
-    private params: string[];
-    private path: string;
+    constructor(private router: ExpressRouter, private pathsRecord: any) {
+        this.list = this.initPathHanlder((paths: string[], listHandler: ListHandler) =>
+                this.registerHandler('get', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: Object, ...params: string[]) { return listHandler.call(this, ...params); }));
 
-    constructor(protected app: ExpressApp, protected paths: string[]){
-        this.params = paths
-                .filter(path => path.startsWith(':'))
-                .map(path => path.split(':')[1])
-        this.path = paths.join('/');
-    }
+        this.get = this.initPathHanlder((paths: string[], getHandler: GetHandler) =>
+            this.registerHandler('get', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                 function(body: Object, ...params: string[]) { return getHandler.call(this, ...params); }));
 
-    private getParams(req: Request): string[] {
-        return this.params.map(param => req.params[param]).filter(val => val != null)
-    }
+        this.add = this.initPathHanlder((paths: string[], addHandler: AddHandler) =>
+                this.registerHandler('put', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: Object, ...params: string[]) { return addHandler.call(this, ...params); }));
 
-    private getContext(req: Request, res: Response) {
-        return { 
-            request: req,
-            response: res,
-            query: req.query,
-            headers: req.headers,
-            cookies: req.cookies
-        }
-    }
+        this.update = this.initPathHanlder((paths: string[], updateHandler: UpdateHandler) =>
+                this.registerHandler('post', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: Object, ...params: string[]) { return updateHandler.call(this, body, ...params); }));
 
-    private registerHandler<method extends keyof ExpressApp>(method: method, handler: Handler) {
-        console.log(`Handler('${this.path}','${method.toUpperCase()}')`)
-        this.app[method](this.path, (req, res) => {
-            return res.send(handler.call(this.getContext(req, res), req.body, this.getParams(req)))
-        })
-        return this
+        this.remove = this.initPathHanlder((paths: string[], removeHandler: RemoveHandler) =>
+                this.registerHandler('delete', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: Object, ...params: string[]) { return removeHandler.call(this, ...params); }));
+
+        this.intercept = this.initPathHanlder((paths: string[], interceptHandler: InterceptHandler) =>
+                this.registerInterceptor('use', this.getPath(paths), this.pathsRecord,
+                                         function(next: NextFunction) { interceptHandler.call(this, next); } ));
     }
 
-    list: RequestMethodHandler<ListHandler> = (listHandler: ListHandler): RequestHandler => {
-        return this.registerHandler('get', (body, params) => listHandler.call(this, params))
+    private getParams = (paths: string[]) => paths.filter(p => p.startsWith(':')).map(p => p.slice(1));
+    private getPath = (paths: string[]) => '/' + paths.join('/');
+    private getParamsValues = (req: Request, params: string[]) => params.map(param => req.params[param]);
+    private getContext = (req: Request, res: Response) => <RequestContext> {
+        request: req
+        , response: res
+        , args: req.query
+        , headers: req.headers
+        , cookies: req.cookies
     }
-    get: RequestMethodHandler<GetHandler> = (getHandler: GetHandler): RequestHandler => {
-        return this.registerHandler('get', (body, params) => getHandler.call(this, params))
+    private initPathHanlder = <T extends OperationHandler>(onExecute: RequestRegister<T>) =>
+            CreateProxyPathHandler<T>([], onExecute)
+    private registerHandler = ( method: validOperation,
+                                path: string,
+                                params: string[],
+                                pathsRecord: any,
+                                handler: OperationHandler) => {
+        pathsRecord[path] = pathsRecord[path] === undefined ? [] : pathsRecord[path];
+        pathsRecord[path].push(method);
+        serverLog.debug(method + '::' + path);
+        this.router[method](path, async (req: Request, res: Response) =>
+                res.send(await handler.call(this.getContext(req, res), req.body, ...this.getParamsValues(req, params))));
     }
-    add: RequestMethodHandler<AddHandler>= (addHandler: AddHandler): RequestHandler => {
-        return this.registerHandler('put', (body, params) => addHandler.call(this, body))
-    }
-    update: RequestMethodHandler<UpdateHandler>= (updateHandler: UpdateHandler): RequestHandler => {
-        return this.registerHandler('post', (body, params) => updateHandler.call(this, body, params))
-    }
-    remove: RequestMethodHandler<RemoveHandler>= (removeHandler: RemoveHandler): RequestHandler => {
-        return this.registerHandler('delete', (body, params) => removeHandler.call(this, params))
-    }
-    intercept: RequestMethodHandler<InterceptHandler>= (interceptHandler: InterceptHandler): RequestHandler => {
-        console.log(`Interceptor('${this.path}')`)
-        this.app.use(this.path, (req, res, next) => {
-            return interceptHandler.call(this.getContext(req, res), next)
-        })
-        return this
-    }
-}
 
-interface PathHandler {
-    [key: string] : PathHandler
-    (): RequestHandler
+    private registerInterceptor = ( method: validOperation,
+                                    path: string,
+                                    pathsRecord: any,
+                                    handler: InterceptHandler) => {
+        pathsRecord[path] = pathsRecord[path] === undefined ? [] : pathsRecord[path];
+        pathsRecord[path].push(method);
+        serverLog.debug(method + '::' + path);
+        this.router[method](path, async (req: Request, res: Response, next: NextFunction) =>
+                await handler.call(this.getContext(req, res), next));
+    }
 }
 
 export {
     PathHandler,
-    RequestHandler
-}
+    RequestHandler,
+    OperationHandler,
+    RequestRegister,
+    RequestContext
+};

@@ -1,29 +1,22 @@
-import { Express as ExpressApp } from 'express'
-import Proxify from '../utils/proxify'
-import { PathHandler, RequestHandler } from './handlers'
+import Proxify from '../utils/proxify';
+import { PathHandler, OperationHandler, RequestRegister } from './handlers';
 
-function resolvePath(property: PropertyKey){
-    const path =  property.toString()
-    const isPathParam = path.startsWith('$')
-    return isPathParam ? ':' + path.slice(1) : path
-}
-
-export function CreateProxyPathHandler(app: ExpressApp, paths: string[]) : PathHandler {
-    return Proxify((<PathHandler> new Function()), {
-        get: <PropertyKey extends keyof PathHandler>
-                (target: PathHandler, property: PropertyKey,reciver: any) : PathHandler[PropertyKey] => {
-            if (!(property in target)) {
-                target[property] = 
-                    CreateProxyPathHandler(
-                        app,
-                        paths.concat([resolvePath(property)])
-                    )
-            }
-                    
-            return target[property]
-        },
-        apply: (target: PathHandler, thisArg: any, argArray?: any): RequestHandler => {
-            return new RequestHandler(app, paths)
-        }
-    })
-}
+export const CreateProxyPathHandler =
+        <T extends OperationHandler>(paths: string[], onExcecute: RequestRegister<T>): PathHandler<T> =>
+                Proxify((<PathHandler<T>> new Function()), {
+                    get: <PropertyKey extends keyof PathHandler<T>>
+                            (target: PathHandler<T>,
+                             property: PropertyKey,
+                             reciver: any): PathHandler<T>[PropertyKey] =>
+                                    property in target ?
+                                        target[property] :
+                                        CreateProxyPathHandler(
+                                            paths.concat([ property.toString().startsWith('$') ?
+                                                            ':' + paths.length :
+                                                            property.toString()
+                                                        ]),
+                                            onExcecute)
+                    , apply: (  target: PathHandler<T>,
+                                thisArg: any,
+                                argArray: T[]): void => onExcecute(paths, argArray[0])
+                });
