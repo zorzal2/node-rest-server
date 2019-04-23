@@ -56,6 +56,13 @@ function StartServer(conf: ServerConfig = defaultConf): any {
 
     app.use((req, res, next) => {
         Context.set('TxID', req.headers.txid);
+        Context.set('XHeaders',
+                    Object.keys(req.headers)
+                            .filter(name => name.startsWith('x-'))
+                            .reduce((xheaders, name) => {
+                                xheaders[name] = req.headers[name];
+                                return xheaders;
+                            },      <Object> {} ));
         next();
     });
 
@@ -65,7 +72,10 @@ function StartServer(conf: ServerConfig = defaultConf): any {
     app.use(serverRoutes);
 
     app.use((req, res, next) => {
-        res.status(404).send('valid paths : ' + JSON.stringify(pathsRecord));
+        res.status(404).json({
+            error: 'PAGE_NOT_FOUND',
+            validPaths: pathsRecord
+        });
     });
 
     return new RequestHandler(serverRoutes, pathsRecord);

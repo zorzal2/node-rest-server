@@ -15,14 +15,13 @@ const server  = StartServer();
 
 server
     .intercept(function name1(this: RequestContext, next: NextFunction) {
-        appLog.debug(`Request: '${this.request.originalUrl}' with : Headers `,  this.headers);
+        appLog.info(Context.get('XHeaders'));
         next();
     });
 
 
 
 server.get.users.$id(function(this: RequestContext, id: string) {
-    appLog.info(Context.get('TxID'));
     return load(id);
 });
 server.add.users.$id(function(body) { return save(body); });
@@ -45,7 +44,7 @@ server.list.game.$gameId.player.$playerId.score(function(gameId: string, playerI
     }];
 });
 
-server.get.game.$gameId.player.$playerId.score.$scoreId(function(gameId, playerId) {
+server.get.game.$gameId.player.$playerId.score.$scoreId(async function(gameId, playerId) {
     return {
         gameId,
         playerId,

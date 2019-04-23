@@ -96,9 +96,13 @@ class RequestHandler {
                                 handler: OperationHandler) => {
         pathsRecord[path] = pathsRecord[path] === undefined ? [] : pathsRecord[path];
         pathsRecord[path].push(method);
-        serverLog.debug(method + '::' + path);
-        this.router[method](path, async (req: Request, res: Response) =>
-                res.send(await handler.call(this.getContext(req, res), req.body, ...this.getParamsValues(req, params))));
+        serverLog.debug(`Handler(${method.toUpperCase()}, "${path}")`);
+        this.router[method](path, async (req: Request, res: Response) => {
+            const result = await handler.call(this.getContext(req, res), req.body, ...this.getParamsValues(req, params));
+            serverLog.info( `Request(path="${req.originalUrl}", body=${JSON.stringify(req.body)}) => ` +
+                            `Response(body=${JSON.stringify(result)})`);
+            res.json(result);
+        });
     }
 
     private registerInterceptor = ( method: validOperation,
@@ -107,7 +111,7 @@ class RequestHandler {
                                     handler: InterceptHandler) => {
         pathsRecord[path] = pathsRecord[path] === undefined ? [] : pathsRecord[path];
         pathsRecord[path].push(method);
-        serverLog.debug(method + '::' + path);
+        serverLog.debug(`Interceptor(${method.toUpperCase()}, "${path}")`);
         this.router[method](path, async (req: Request, res: Response, next: NextFunction) =>
                 await handler.call(this.getContext(req, res), next));
     }
