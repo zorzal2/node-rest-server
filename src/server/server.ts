@@ -1,4 +1,5 @@
 import logger from '@zorzal2/logger';
+import _default from '@zorzal2/context';
 import Express from 'express';
 import BodyParser from 'body-parser';
 import CookieParser from 'cookie-parser';
@@ -6,6 +7,7 @@ import Compression from 'compression';
 import { RequestContext, RequestHandler } from './handlers';
 import { AppError, isServerError } from './server-error';
 
+const Context = _default;
 let serverLog = logger.create('server-app');
 
 type ExpressApp = Express.Express;
@@ -50,6 +52,13 @@ function StartServer(conf: ServerConfig = defaultConf): any {
         return res.status(serverError.status).send(serverError);
     });
 
+    app.use(Context.middleware);
+
+    app.use((req, res, next) => {
+        Context.set('TxID', req.headers.txid);
+        next();
+    });
+
     const pathsRecord = {};
     const serverRoutes: Router = Router();
 
@@ -59,10 +68,7 @@ function StartServer(conf: ServerConfig = defaultConf): any {
         res.status(404).send('valid paths : ' + JSON.stringify(pathsRecord));
     });
 
-    return {
-        server: new RequestHandler(serverRoutes, pathsRecord),
-        app
-    };
+    return new RequestHandler(serverRoutes, pathsRecord);
 }
 
 

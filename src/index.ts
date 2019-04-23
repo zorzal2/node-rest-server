@@ -1,6 +1,9 @@
+import _default from '@zorzal2/context';
 import logger from '@zorzal2/logger';
 import { StartServer, RequestContext } from './server/server';
 import { NextFunction } from 'connect';
+
+const Context = _default;
 
 const appLog = logger.create('app');
 
@@ -8,10 +11,7 @@ let load = (id) => id;
 let save = (some) => some;
 let update = (id, some) => some;
 
-const serverApp  = StartServer();
-
-const server = serverApp.server;
-const app = serverApp.app;
+const server  = StartServer();
 
 server
     .intercept(function name1(this: RequestContext, next: NextFunction) {
@@ -21,13 +21,16 @@ server
 
 
 
-server.get.users.$id(function(id) { return load(id); });
+server.get.users.$id(function(this: RequestContext, id: string) {
+    appLog.info(Context.get('TxID'));
+    return load(id);
+});
 server.add.users.$id(function(body) { return save(body); });
 server.update.users.$id(function(body, id) { return update(id, body); });
 server.remove.users.$id(function(id) { return load(id); });
 
 server.get.users.$userId.phones.$phoneId(function(userId, phoneId) {
-    console.log('phone list by : ' + userId);
+    appLog.info('phone list by : ' + userId);
     return {
         userId,
         phoneId
