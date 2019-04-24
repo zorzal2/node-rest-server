@@ -29,6 +29,7 @@
     "@types/node": "^11.13.0",
     "@zorzal2/context": "^0.1.2",
     "@zorzal2/logger": "^0.1.2",
+    "@zorzal2/common": "^0.1.2",
     "body-parser": "^1.18.3",
     "compression": "^1.7.3",
     "cookie-parser": "^1.4.4",

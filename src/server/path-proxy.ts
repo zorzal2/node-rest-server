@@ -1,6 +1,9 @@
 import Proxify from '../utils/proxify';
 import { PathHandler, OperationHandler, RequestRegister } from './handlers';
 
+const resolveProperty = (property: string, position: number) =>
+    property.startsWith('$') ? [ ':' + position ] : [ property ];
+
 export const CreateProxyPathHandler =
         <T extends OperationHandler>(paths: string[], onExcecute: RequestRegister<T>): PathHandler<T> =>
                 Proxify((<PathHandler<T>> new Function()), {
@@ -11,10 +14,7 @@ export const CreateProxyPathHandler =
                                     property in target ?
                                         target[property] :
                                         CreateProxyPathHandler(
-                                            paths.concat([ property.toString().startsWith('$') ?
-                                                            ':' + paths.length :
-                                                            property.toString()
-                                                        ]),
+                                            paths.concat(resolveProperty(property.toString(), paths.length)),
                                             onExcecute)
                     , apply: (  target: PathHandler<T>,
                                 thisArg: any,

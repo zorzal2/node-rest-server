@@ -1,23 +1,48 @@
-interface AppError {
-    status: number;
-    code: string;
-    message: string | undefined;
-    stack: string | undefined;
-}
+import { code } from '@zorzal2/common';
 
-const isServerError = (err: any): err is AppError => true;
+const errors = code.complete({
+    internalError: {
+        status: 500,
+        name: 'InternalServerError',
+        message: 'Unhandler Server Error',
+    },
+    badRequest: {
+        status: 400,
+        name: 'BadRequest',
+        message: 'Bad Request',
 
-const NotFound = () => <AppError> {
-    status: 404,
-    code: 'NOT_FOUND'
+        pageNotFound: {
+            status: 404,
+            name: 'PageNotFound',
+            message: 'This server cannot have a service for the requested path'
+        }
+    }
+});
+
+type AnyError = {
+    name: string;
+    message: string;
+    status?: number;
+    stack?: string;
+    code?: string;
+    cause?: AnyError;
 };
 
-const Error = {
-    NotFound
+const ServerError = {
+    ...errors,
+    create: (errorType: AnyError, extraData: object) => {
+        const error = new Error();
+        return {
+            ...error,
+            ...errorType,
+            ...extraData
+        };
+    },
+    throw: function(errorType: AnyError, extraData: object) {
+        throw this.create(errorType, extraData);
+    }
 };
 
 export {
-    AppError,
-    isServerError,
-    Error
+    ServerError
 };

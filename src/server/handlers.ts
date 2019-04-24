@@ -9,20 +9,15 @@ type Response = Express.Response;
 type NextFunction = Express.NextFunction;
 type ExpressRouter = Express.Router;
 
-
-// tODO ACEPTAR ESTO COMO HANDLER GLOBAL
-// type Handler = (body?: Object, ...params: string[]) => any
-// tetativamente ya no es mas necesario
-
-
 type ListHandler = (...params: string[]) => Promise<any[]> | any[];
 type GetHandler = (...params: string[]) => any;
-type AddHandler = (body: Object, ...params: string[]) => any;
-type UpdateHandler = (body: Object, ...params: string[]) => any;
 type RemoveHandler = (...params: string[]) => any;
+type AddHandler = (body: object, ...params: string[]) => any;
+type UpdateHandler = (body: object, ...params: string[]) => any;
+type InvokeHandler = (body: object, ...params: string[]) => any;
 type InterceptHandler = (next: NextFunction) => any;
-type OperationHandler = ListHandler | GetHandler | AddHandler | UpdateHandler | RemoveHandler | InterceptHandler;
-type validOperation = 'get' | 'post' | 'put' | 'delete' | 'use' ;
+type OperationHandler = ListHandler | GetHandler | RemoveHandler | AddHandler | UpdateHandler | InvokeHandler | InterceptHandler;
+type validOperation = 'get' | 'post' | 'put' | 'delete' | 'patch' | 'use' ;
 
 type RequestContext = {
     request: Request;
@@ -49,28 +44,33 @@ class RequestHandler {
     public add: PathHandler<AddHandler>;
     public update: PathHandler<UpdateHandler>;
     public remove: PathHandler<RemoveHandler>;
+    public invoke: PathHandler<InvokeHandler>;
     public intercept: PathHandler<InterceptHandler>;
 
     constructor(private router: ExpressRouter, private pathsRecord: any) {
         this.list = this.initPathHanlder((paths: string[], listHandler: ListHandler) =>
                 this.registerHandler('get', this.getPath(paths), this.getParams(paths), this.pathsRecord,
-                                     function(body: Object, ...params: string[]) { return listHandler.call(this, ...params); }));
+                                     function(body: object, ...params: string[]) { return listHandler.call(this, ...params); }));
 
         this.get = this.initPathHanlder((paths: string[], getHandler: GetHandler) =>
-            this.registerHandler('get', this.getPath(paths), this.getParams(paths), this.pathsRecord,
-                                 function(body: Object, ...params: string[]) { return getHandler.call(this, ...params); }));
+                this.registerHandler('get', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: object, ...params: string[]) { return getHandler.call(this, ...params); }));
 
         this.add = this.initPathHanlder((paths: string[], addHandler: AddHandler) =>
                 this.registerHandler('put', this.getPath(paths), this.getParams(paths), this.pathsRecord,
-                                     function(body: Object, ...params: string[]) { return addHandler.call(this, ...params); }));
-
-        this.update = this.initPathHanlder((paths: string[], updateHandler: UpdateHandler) =>
-                this.registerHandler('post', this.getPath(paths), this.getParams(paths), this.pathsRecord,
-                                     function(body: Object, ...params: string[]) { return updateHandler.call(this, body, ...params); }));
+                                     function(body: object, ...params: string[]) { return addHandler.call(this, ...params); }));
 
         this.remove = this.initPathHanlder((paths: string[], removeHandler: RemoveHandler) =>
                 this.registerHandler('delete', this.getPath(paths), this.getParams(paths), this.pathsRecord,
-                                     function(body: Object, ...params: string[]) { return removeHandler.call(this, ...params); }));
+                                     function(body: object, ...params: string[]) { return removeHandler.call(this, ...params); }));
+
+        this.update = this.initPathHanlder((paths: string[], updateHandler: UpdateHandler) =>
+                this.registerHandler('patch', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: object, ...params: string[]) { return updateHandler.call(this, body, ...params); }));
+
+        this.invoke = this.initPathHanlder((paths: string[], invokeHandler: InvokeHandler) =>
+                this.registerHandler('post', this.getPath(paths), this.getParams(paths), this.pathsRecord,
+                                     function(body: object, ...params: string[]) { return invokeHandler.call(this, body, ...params); }));
 
         this.intercept = this.initPathHanlder((paths: string[], interceptHandler: InterceptHandler) =>
                 this.registerInterceptor('use', this.getPath(paths), this.pathsRecord,
