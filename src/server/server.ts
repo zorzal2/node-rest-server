@@ -4,14 +4,10 @@ import Express from 'express';
 import BodyParser from 'body-parser';
 import CookieParser from 'cookie-parser';
 import Compression from 'compression';
-import { RequestHandler, RequestContext } from './request-handler/request-handler';
+import { OperationManager } from './operation-handler/operation-manager';
+import { OperationRegister, RequestContext } from './operation-handler/operation-register';
 import { ErrorHandlerMiddleware } from './middleware/error-handler.middleware';
 import { headersMiddleware, pageNotFoundMiddleware } from './middleware/common.middleware';
-
-type ExpressApp = Express.Express;
-
-type Router = Express.Router;
-const Router = Express.Router;
 
 let serverLog = logger.create('server-app:server');
 
@@ -21,10 +17,10 @@ class ServerConfig {
 
 const defaultConf: ServerConfig  = { port: 7000 };
 
-function StartServer(conf: ServerConfig = defaultConf): RequestHandler {
+function StartServer(conf: ServerConfig = defaultConf): OperationManager {
     const pathsRecord = {};
-    const serverRoutes: Router = Router();
-    const app: ExpressApp = Express();
+    const serverRoutes = Express.Router();
+    const app = Express();
     app.use(BodyParser.json());
     app.use(Compression());
     app.use(CookieParser());
@@ -35,9 +31,8 @@ function StartServer(conf: ServerConfig = defaultConf): RequestHandler {
     app.use(ErrorHandlerMiddleware);
     app.listen(conf.port);
 
-    serverLog.info(`Server start on port :${conf.port}`);
-
-    return new RequestHandler(serverRoutes, pathsRecord);
+    serverLog.info(`Server started!!! - On port :${conf.port}`);
+    return new OperationManager(new OperationRegister(serverRoutes, pathsRecord));
 }
 
 const $id = '$id';

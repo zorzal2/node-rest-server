@@ -3,14 +3,16 @@ jest.mock('express');
 import { StartServer } from '../../src/server/server';
 import Express from 'express';
 
-const ExpressMock: any = Express;
 let ExpressAppMock = undefined;
 
 beforeEach(() => {
     const use = jest.fn(() => { return {}; });
     const listen = jest.fn(() => { return {}; });
     ExpressAppMock = { use, listen};
-    ExpressMock.mockReturnValue(ExpressAppMock);
+
+    jest.isMockFunction(Express) ?
+            Express.mockReturnValue(ExpressAppMock) :
+            fail('Express must be a mock funtion');
 });
 
 

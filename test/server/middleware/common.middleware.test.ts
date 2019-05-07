@@ -1,21 +1,22 @@
-
+import { jestUtils } from '../../jest-utils';
 jest.mock('@zorzal2/context');
 jest.mock('@zorzal2/common');
 
-import { txid , code as CodeImported } from '@zorzal2/common';
-const code = <typeof CodeImported> jest.requireActual('@zorzal2/common').code;
-const txidMock = <any> txid;
-const codeMock = <jest.Mocked<typeof code>> CodeImported;
-codeMock.complete.mockImplementation(code.complete);
+import context from '@zorzal2/context';
+import { txid , code } from '@zorzal2/common';
 
+const actualCode = jestUtils.asTypeOf(code, jest.requireActual('@zorzal2/common').code);
+
+const txidMock = jestUtils.asMock(txid);
+const codeMock = jestUtils.asMock(code);
+const contextMock = jestUtils.asMock(context);
+
+codeMock.complete.mockImplementation(actualCode.complete);
 
 import { pageNotFoundMiddleware, headersMiddleware } from '../../../src/server/middleware/common.middleware';
 import { ServerError as ServerErrorType } from '../../../src/server/server-error';
 
-const ServerError = <typeof ServerErrorType> jest.requireActual('../../../src/server/server-error').ServerError;
-
-import context from '@zorzal2/context';
-const contextMock = <any> context;
+const ServerError = jestUtils.asTypeOf(ServerErrorType, jest.requireActual('../../../src/server/server-error').ServerError);
 
 beforeEach(() => {
     txidMock.create.mockReset();
