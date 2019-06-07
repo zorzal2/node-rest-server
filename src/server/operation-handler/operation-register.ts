@@ -19,6 +19,10 @@ type RequestContext = {
     cookies: any;
 };
 
+const doAsync = async function<T extends Handler>(fun: T, context: object, ...arg: any[]) {
+    return await fun.call(context, ...arg);
+};
+
 class OperationRegister {
     constructor(private router: ExpressRouter, private pathsRecord: any) {
     }
@@ -29,7 +33,7 @@ class OperationRegister {
                 serverLog.debug(`Inteceptor("${expressPath}")`);
 
                 this.router.use(expressPath, (req: Request, res: Response, next: NextFunction) =>
-                        interceptHandler.call(this.getContext(req, res), next).catch(next));
+                        doAsync(interceptHandler, this.getContext(req, res), next).catch(next));
             }
 
     public createOperationRegister = <T extends Handler>
@@ -41,17 +45,16 @@ class OperationRegister {
 
                         this.router[method](
                                 expressPath,
-                                (req: Request, res: Response, next: NextFunction) => {
-                                    handler.call(this.getContext(req, res), ...this.getParamsValues(req, params, withBody))
-                                    .then((result: any) => {
-                                        serverLog.info(
-                                                `Request(path="${req.originalUrl}", body=${JSON.stringify(req.body)}) => ` +
-                                                `Response(status=${successfulStatus}, body=${JSON.stringify(result)})`);
+                                (req: Request, res: Response, next: NextFunction) =>
+                                        doAsync(handler, this.getContext(req, res), ...this.getParamsValues(req, params, withBody))
+                                        .then((result: any) => {
+                                            serverLog.info(
+                                                    `Request(path="${req.originalUrl}", body=${JSON.stringify(req.body)}) => ` +
+                                                    `Response(status=${successfulStatus}, body=${JSON.stringify(result)})`);
 
-                                        res.status(successfulStatus).json({ data: result });
-                                    })
-                                    .catch(next);
-                                }
+                                            res.status(successfulStatus).json({ data: result });
+                                        })
+                                        .catch(next)
                         );
                     }
 

@@ -2,13 +2,13 @@
   "name": "rest-server",
   "version": "0.1.0",
   "description": "Preconfigured rest-server",
-  "main": "src/index.js",
+  "main": "src/example.js",
   "scripts": {
     "tsc": "tsc",
     "watch-ts": "tsc -w",
     "tslint": "tslint -c tslint.json -p tsconfig.json 'src/**/*.ts'",
     "build": "npm run tslint && tsc",
-    "start": "node --inspect-brk=10000 -r ts-node/register dist/index.js",
+    "start": "node --inspect-brk=10000 -r ts-node/register dist/example.js",
     "launch": "npm run build && npm start",
     "test": "jest && jest --coverage"
   },
