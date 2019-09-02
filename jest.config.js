@@ -1,4 +1,3 @@
-
 module.exports = {
   moduleFileExtensions: ['ts', 'js'],
   preset: 'ts-jest',
@@ -9,12 +8,12 @@ module.exports = {
   collectCoverageFrom: [
     "src/**"
   ],
-  "coverageThreshold": {
-    "global": {
-      "branches": 80,
-      "functions": 80,
-      "lines": 80,
-      "statements": -10
+  coverageThreshold: {
+    global: {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90
     }
   }
 };
